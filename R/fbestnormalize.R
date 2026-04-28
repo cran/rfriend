@@ -7,7 +7,21 @@
 #' @param alpha Numeric. Significance level for normality tests (default = \code{0.05}).
 #' @param data_name A character string to manually set the name of the data for plot axis and reporting. Default extracts name from input object. \code{data}.
 #' @param plots Logical. If \code{TRUE}, plots Q-Q plots and Histograms of the original and transformed data. Default is \code{FALSE}.
-#' @param output_type Character string specifying the output format: \code{"pdf"}, \code{"word"}, \code{"rmd"}, \code{"off"} (no file generated) or \code{"console"}. The option \code{"console"} forces output to be printed. Default is \code{"off"}.
+#' @param output_type Character string specifying the output format. Default is \code{"default"}.
+#'   \itemize{
+#'     \item \code{"default"}: Returns the object and lets R decide whether
+#'       to print; auto-prints if unassigned, silent if assigned to a variable.
+#'       Use \code{print(result)} or \code{plot(result)} to display the
+#'       returned object.
+#'     \item \code{"console"}: Forces immediate printing to the console
+#'       regardless of object assignment.
+#'     \item \code{"pdf"}, \code{"word"}, \code{"excel"}: Saves results to a
+#'       file of the corresponding format. See \code{save_as},
+#'       \code{save_in_wdir}, and \code{open_generated_files} for file
+#'       path and opening behavior.
+#'     \item \code{"rmd"}: Stores the raw markdown string inside the returned
+#'       object for use in R Markdown documents.
+#'   }
 #' @param save_as Character string specifying the output file path (without extension).
 #'   If a full path is provided, output is saved to that location.
 #'   If only a filename is given, the file is saved in \code{tempdir()}.
@@ -15,8 +29,11 @@
 #'   the file is named "data_name_transformed" in that directory. If an extension is provided the output format specified with option "output_type" will be overruled.
 #'   Defaults to \code{file.path(tempdir(), "data_name_transformed.pdf")}.
 #' @param save_in_wdir Logical. If \code{TRUE}, saves the file in the working directory. Default is \code{FALSE}, this avoid unintended changes to the global environment. If \code{save_as} location is specified \code{save_in_wdir} is overwritten by \code{save_as}.
-#' @param close_generated_files Logical. If \code{TRUE}, closes open 'Word' files. This to be able to save the newly generated file by the \code{f_bestNormalize()} function. 'Pdf' files should also be closed before using the function and cannot be automatically closed. Default is \code{FALSE}.
-#' @param open_generated_files Logical. If \code{TRUE}, Opens the generated output file, this to directly view the results after creation. Files are stored in tempdir(). Default is \code{TRUE}.
+#' @param close_generated_files Logical. Closes open Excel or Word (NOT pdf) files before writing, depending on the output format. Works on Windows (taskkill), macOS (pkill) and Linux (pkill/soffice). Default \code{FALSE}. \strong{WARNING:} Always save your work before using this option!!
+#' @param open_generated_files Logical. Whether to open the generated output
+#'   files after creation. Defaults to \code{TRUE} in an interactive R session
+#'   and \code{FALSE} otherwise (e.g. in scripts or automated pipelines).
+#'   Set to \code{TRUE} or \code{FALSE} to override this behaviour explicitly.
 #' @param ... Additional arguments passed to bestNormalize.
 #'
 #' @return Returns an object of class `f_bestNormalize` containing:
@@ -30,9 +47,7 @@
 #'   \item \code{norm_stats} Data frame of normality statistics for all methods.
 #'   \item \code{rmd} Rmd code if outputype = "rmd".
 #'}
-#' Also generates reports in specified formats, when using output to console and plots = TRUE, the function prints QQ-plots, Histograms and a summary data transformation report.
-#'
-#'#' @return An object of class 'f_bestNormalize' containing results from \code{"bestNormalize"}, the input data, transformed data, Shapiro-Wilk test on original and transformed data. Using the option "output_type", it can also generate output in the form of: R Markdown code, 'Word', or 'pdf' files. Includes print and plot methods for objects of class 'f_bestNormalize'.
+#' Also generates reports in 'Word', or 'pdf' files. When using output to console and plots = TRUE, the function prints QQ-plots, Histograms and a summary data transformation report. Includes print and plot methods for objects of class 'f_bestNormalize'.
 #'
 #' @details
 #' This is a wrapper around the 'bestNormalize' package. Providing a fancy output and the settings  of 'bestNormalize' are tuned based on sample size n.
@@ -43,8 +58,8 @@
 #' This function requires [Pandoc](https://github.com/jgm/pandoc/releases/tag) (version 1.12.3 or higher), a universal document converter.
 #'\itemize{
 #' \item \bold{Windows:} Install Pandoc and ensure the installation folder \cr (e.g., "C:/Users/your_username/AppData/Local/Pandoc") is added to your system PATH.
-#' \item \bold{macOS:} If using Homebrew, Pandoc is typically installed in "/usr/local/bin". Alternatively, download the .pkg installer and verify that the binary’s location is in your PATH.
-#' \item \bold{Linux:} Install Pandoc through your distribution’s package manager (commonly installed in "/usr/bin" or "/usr/local/bin") or manually, and ensure the directory containing Pandoc is in your PATH.
+#' \item \bold{macOS:} If using Homebrew, Pandoc is typically installed in "/usr/local/bin". Alternatively, download the .pkg installer and verify that the binary's location is in your PATH.
+#' \item \bold{Linux:} Install Pandoc through your distribution's package manager (commonly installed in "/usr/bin" or "/usr/local/bin") or manually, and ensure the directory containing Pandoc is in your PATH.
 #'
 #' \item If Pandoc is not found, this function may not work as intended.
 #' }
@@ -58,32 +73,57 @@
 #'
 #' @examples
 #' \donttest{
-#' # Create some skewed data (e.g., using a log-normal distribution).
-#' skewed_data <- rlnorm(100, meanlog = 0, sdlog = 1)
-#'
 #' # Use set.seed to keep the outcome of bestNormalize stable.
 #' set.seed(123)
 #'
-#' # Transform the data and store all information in f_bestNormalize_out.
-#' f_bestNormalize_out <- f_bestNormalize(skewed_data)
+#' # Create some skewed data (e.g., using a log-normal distribution).
+#' skewed_data <- rlnorm(100, meanlog = 0, sdlog = 1)
 #'
-#' # Print the output.
-#' print(f_bestNormalize_out)
+#' # Basic usage: transform and store the full result object.
+#' result <- f_bestNormalize(skewed_data, data_name = "Skewed log-normal data")
 #'
-#' # Show histograms and QQplots.
-#' plot(f_bestNormalize_out)
+#' # Print a summary of the transformation.
+#' print(result)
 #'
-#' # Directly store the transformed_data from f_bestNormalize and force to show
-#' # plots and transformation information.
-#' transformed_data <- f_bestNormalize(skewed_data, output_type = "console")$transformed_data
+#' # Inspect normality statistics for all candidate transformations.
+#' result$norm_stats
 #'
-#' # Any other transformation can be choosen by using:
-#' boxcox_transformed_data <- f_bestNormalize(skewed_data)$bestNormalize$other_transforms$boxcox$x.t
-#' # and substituting '$boxcox' with the transformation of choice.
+#' # Plot histograms and QQ-plots for original vs. transformed data.
+#' plot(result)
 #'
-#' #To print rmd output set chunck option to results = 'asis' and use:
-#' f_bestNormalize_rmd_out <- f_bestNormalize(skewed_data, output_type = "rmd")
-#' cat(f_bestNormalize_rmd_out$rmd)
+#' # Use plots = TRUE to auto-plot when output_type = "default" (default).
+#' result2 <- f_bestNormalize(skewed_data, plots = TRUE)
+#'
+#' # Extract only the transformed (data) vector directly.
+#' transformed_data <- f_bestNormalize(skewed_data)$transformed_data
+#'
+#' # data.frame input: column name is used as data_name automatically.
+#' df <- data.frame(measurement = skewed_data)
+#' result_df <- f_bestNormalize(df)
+#'
+#' # Data with NAs: NAs are preserved at their original positions.
+#' skewed_na <- skewed_data
+#' skewed_na[c(5, 20)] <- NA
+#' result_na <- f_bestNormalize(skewed_na)
+#'
+#' # Access a specific alternative transformation (first check what is available).
+#' names(result$bestNormalize$other_transforms)
+#' # Then extract the one you want, e.g.:
+#' # result$bestNormalize$other_transforms$yeojohnson$x.t
+#'
+#' # Force output to console (prints report + plots automatically).
+#' f_bestNormalize(skewed_data, output_type = "console")
+#'
+#' # Generate a PDF report saved to a custom path.
+#' f_bestNormalize(skewed_data,
+#'                 output_type          = "pdf",
+#'                 save_as              = "my_report"
+#'                 )
+#'
+#' # Generate R Markdown output for use inside a .Rmd chunk
+#' # (set chunk option results = 'asis').
+#' rmd_result <- f_bestNormalize(skewed_data, output_type = "rmd")
+#' cat(rmd_result$rmd)
 #' }
 #'
 #' @export
@@ -91,52 +131,34 @@ f_bestNormalize <- function(data,
                             alpha = 0.05,
                             plots = FALSE,
                             data_name = NULL,
-                            output_type = "off",
+                            output_type = "default",
                             save_as = NULL,
                             save_in_wdir = FALSE,
                             close_generated_files = FALSE,
-                            open_generated_files = TRUE,
+                            open_generated_files = interactive(),
                             ...) {
-  ########## Reset initial settings on exit ##################################
-  # Save initial settings at the start
-  old_par <- par(no.readonly = TRUE)  # Save graphical parameters
-  old_par$new <- NULL                 # Remove this parameter to prevent warning
-  original_options <- options()       # Save global options
-
-  # Conditionally save panderOptions if the package is loaded
-  original_panderOptions <- if (requireNamespace("pander", quietly = TRUE) && is.function(pander::panderOptions)) {
-    pander::panderOptions()
-  } else {
-    NULL
-  }
-
-  # Single exit handler to restore settings
-  on.exit({
-
-    # Restore saved parameters for par
-    par(old_par)
-
-    # Restore global options
-    options(original_options)
-
-    # Restore panderOptions if they were saved
-    if (!is.null(original_panderOptions)) {
-      for (opt in names(original_panderOptions)) {
-        try(pander::panderOptions(opt, original_panderOptions[[opt]]), silent = TRUE)
-      }
-    }
-  }, add = TRUE)
 
 
+  ########## Reset initial settings on exit #################################
+  .session_state <- save_session_state()  # Helper function: helper_session_state
+  on.exit(restore_session_state(.session_state), add = TRUE) # Helper function: helper_session_state
 
-  if( !(output_type %in% c("pdf", "word", "rmd", "console", "off")) ){
-    stop("Character string specifying the output format (output_type = ) should be either: 'pdf', 'word', 'rmd', 'off', or 'console'")
+
+  if( !(output_type %in% c("pdf", "word", "rmd", "console", "default")) ){
+    stop("Character string specifying the output format (output_type = ) should be either: 'pdf', 'word', 'rmd', 'default', or 'console'")
   }
 
   ##############################################################################
 
   # Create object with transformed data as primary element
   output_list <- list()
+
+  # Create a file_extension switch
+  file_extension <- NULL
+
+  # Capture the dots
+  args <- list(...)
+
 
   # Input validation and initialization
   if (is.data.frame(data)) {
@@ -188,7 +210,7 @@ f_bestNormalize <- function(data,
       }
     }
 
-    if(!exists("file_extension") && output_type %in% c("console", "off")){
+    if(is.null(file_extension) && output_type %in% c("console", "default")){
       # use helper get_save_path() to create output_path
       output_path <- get_save_path(save_as = save_as,
                                    default_name = paste(data_name, "transformed", sep = "_"),
@@ -199,7 +221,7 @@ f_bestNormalize <- function(data,
       output_type <- "pdf"
 
     }
-    else if(!exists("file_extension") && output_type %in% c("pdf", "word", "excel", "rmd")){
+    else if(is.null(file_extension) && output_type %in% c("pdf", "word", "excel", "rmd")){
 
       #create extension based on input_type
       file.ext <- unname(output_type_map[output_type])
@@ -213,7 +235,7 @@ f_bestNormalize <- function(data,
 
 
     }
-    else if(exists("file_extension")) {
+    else if(!is.null(file_extension)) {
 
       # use helper get_save_path() to create output_path
       output_path <- get_save_path(save_as = save_as,
@@ -247,42 +269,39 @@ f_bestNormalize <- function(data,
   y_clean <- y[!is.na(y)]
   n <- length(y_clean)
 
-  # Normality check on original data
+  # Add the data to the arguments list
+  args$x <- y_clean
 
+  # Normality check on original data.
+  # safe_shapiro() returns a shaped htest for all n regimes (real
+  # result for n in [3, 5000], NA p-value with informative method
+  # label otherwise), so downstream display code and stored output
+  # are type-stable regardless of sample size.
   andersonD_original <- nortest::ad.test(y)
-
-  if (n <= 5000) {
-    shapiro_original <- shapiro.test(y)
-  } else {
-    shapiro_original <- list(statistic = NA, p.value = NA)
-  }
+  shapiro_original <- safe_shapiro(y)
 
 
   # Tune setting of bestNormalize based on sample size. Can be overwritten by user options.
 
   # Tune bestNormalize settings based on valid sample size 'n'
-  if (n < 500) {
-    # LOO is generally faster and more stable than Boot(50) for N < 500
-    if(!exists("loo")) loo <- TRUE
-    # Keep orderNorm disabled for very small N if you prefer stability
-    if(!exists("allow_orderNorm")) allow_orderNorm <- n >= 100
-    # r is irrelevant when loo = TRUE
+  # Check and set conditional defaults
+  if (!"loo" %in% names(args)) {
+    args$loo <- (n < 500)
+  }
 
-  } else {
-    # For N >= 500, switch to fast bootstrapping
-    if(!exists("loo")) loo <- FALSE
-    if(!exists("allow_orderNorm")) allow_orderNorm <- TRUE
-    # r = 10 is usually sufficient for large N
-    if(!exists("r")) r <- 10
+  if (!"allow_orderNorm" %in% names(args)) {
+    args$allow_orderNorm <- (n >= 100)
+  }
+
+  if (!"r" %in% names(args)) {
+    # Assign a dummy value for n < 500 so 'r' always exists,
+    # or 10 for larger samples.
+    args$r <- ifelse(n < 500, 1, 10)
   }
 
   # Train bestNormalize on CLEAN data
   # This avoids crashes/instability and speeds up bestNormalize
-  bn_obj <- bestNormalize::bestNormalize(y_clean,
-                                         loo = loo,
-                                         allow_orderNorm = allow_orderNorm,
-                                         r = r,
-                                         ...)
+  bn_obj <- do.call(bestNormalize::bestNormalize, args)
 
   # Get final vector matching original 'y' length using predict()
   # to automatically handle the NAs in 'newdata'
@@ -333,12 +352,7 @@ f_bestNormalize <- function(data,
 
   # Normality check on transformed data
   andersonD_transformed <- nortest::ad.test(transformed)
-
-  if (n <= 5000) {
-    shapiro_transformed <- shapiro.test(transformed)
-  } else {
-    shapiro_transformed <- list(statistic = NA, p.value = NA)
-  }
+  shapiro_transformed <- safe_shapiro(transformed)
 
 
 
@@ -367,20 +381,32 @@ f_bestNormalize <- function(data,
 
     cat("\n   \n##  Data transformation of ", data_name, "using `bestNormalize`:", Transf_name,".  \n  \n")
 
-    # Text report
-    cat("**Original Data Shapiro-Wilk Test:**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;")
-    cat("W =", round(shapiro_original$statistic, 4))
-    cat("&nbsp;&nbsp;&nbsp;&nbsp;p-value =", format.pval(shapiro_original$p.value), "\n")
+    # Text report -- original data
+    if (is.na(shapiro_original$p.value)) {
+      cat("**Original Data Shapiro-Wilk Test:**&nbsp;&nbsp;&nbsp;&nbsp;",
+          "skipped (", shapiro_original$method, "), see ",
+          "Anderson-Darling and the plots below to assess normality.  \n",
+          sep = "")
+    } else {
+      cat("**Original Data Shapiro-Wilk Test:**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;")
+      cat("W =", round(shapiro_original$statistic, 4))
+      cat("&nbsp;&nbsp;&nbsp;&nbsp;p-value =", format.pval(shapiro_original$p.value), "\n")
+    }
 
 
     # cat("**Applied Transformation:**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;", Transf_name, "   \n   \n")
 
-    # Normality check transformed data
-    shapiro_transformed <- shapiro.test(transformed)
-
-    cat("\n**Transformed Data Shapiro-Wilk Test:** ")
-    cat("W =", round(shapiro_transformed$statistic, 4))
-    cat("&nbsp;&nbsp;&nbsp;&nbsp;p-value =", format.pval(shapiro_transformed$p.value), "\n  \n")
+    # Text report -- transformed data
+    if (is.na(shapiro_transformed$p.value)) {
+      cat("\n**Transformed Data Shapiro-Wilk Test:** ",
+          "skipped (", shapiro_transformed$method, "), see ",
+          "Anderson-Darling and the plots below to assess normality.  \n  \n",
+          sep = "")
+    } else {
+      cat("\n**Transformed Data Shapiro-Wilk Test:** ")
+      cat("W =", round(shapiro_transformed$statistic, 4))
+      cat("&nbsp;&nbsp;&nbsp;&nbsp;p-value =", format.pval(shapiro_transformed$p.value), "\n  \n")
+    }
     cat("&nbsp;   \n  \n")
 
     cat("**Table.** All considered transformations: [Pearson P / df, lower => more normal]",
@@ -413,7 +439,7 @@ f_bestNormalize <- function(data,
   output_list[["andersonD_transformed"]] <- andersonD_transformed
   output_list[["norm_stats"]]          <- output
   if(output_type %in% c("word", "pdf", "rmd")){
-    output_list[["normality_plots"]]  <- magick::image_scale(image_read(temp_png), "600")
+    output_list[["normality_plots"]]  <- magick::image_scale(magick::image_read(temp_png), "600")
   }
   # Set class
   class(output_list) <- "f_bestNormalize"
@@ -421,10 +447,23 @@ f_bestNormalize <- function(data,
   # Generate the pdf or word report, set save location and create markdown document
   if (output_type %in% c("word", "pdf")) {
 
-    if(close_generated_files == TRUE && output_type == "word"){
-        # Close all MS Word files to avoid conflicts (so save your work first)
-        system("taskkill /im WINWORD.EXE /f")
+    if (output_type != "rmd" && isTRUE(close_generated_files)) {
+      close_app <- function(win_proc, mac_name, linux_name) {
+        sysname <- Sys.info()[["sysname"]]
+        if (.Platform$OS.type == "windows") {
+          system(paste0("taskkill /im ", win_proc, " /f"),
+                 ignore.stdout = TRUE, ignore.stderr = TRUE)
+        } else if (sysname == "Darwin") {
+          system(paste0("pkill -f '", mac_name, "'"),
+                 ignore.stdout = TRUE, ignore.stderr = TRUE)
+        } else {
+          system(paste0("pkill -f ", linux_name),
+                 ignore.stdout = TRUE, ignore.stderr = TRUE)
+        }
       }
+      if (output_type == "word")  close_app("WINWORD.EXE", "Microsoft Word",  "soffice")
+    }
+
 
     # Show save location before knitting else it will not display in console.
     message(paste0("Saving output in: ", output_path))
@@ -485,8 +524,8 @@ header-includes:
 
   } else if (output_type == "rmd"){
 
-    if (is.null(opts_knit$get("output.dir"))) {
-      opts_knit$set(output.dir = tempdir())
+    if (is.null(knitr::opts_knit$get("output.dir"))) {
+      knitr::opts_knit$set(output.dir = tempdir())
     }
 
     # Re-capture the markdown text for the rmd output
@@ -507,7 +546,7 @@ header-includes:
 
     return(invisible(output_list))
 
-  } else if (output_type == "off"){
+  } else if (output_type == "default"){
 
     if(plots == TRUE) plot(output_list)
 
@@ -527,14 +566,24 @@ header-includes:
 print.f_bestNormalize <- function(x, ...) {
 
   cat("\nData transformation of", x$data_name, "using `bestNormalize`:", x$transformation_name,"\n")
-  # Text report
-  cat("Original Data Shapiro-Wilk Test: ")
-  cat("   W =", round(x$shapiro_original$statistic, 4),
-      "  p-value =", format.pval(x$shapiro_original$p.value, digits = 4), "\n")
-  # cat("Applied Transformation:", Transf_name, "   \n   \n")
-  cat("Transformed Data Shapiro-Wilk Test: ")
-  cat("W =", round(x$shapiro_transformed$statistic, 4),
-      "  p-value =", format.pval(x$shapiro_transformed$p.value, digits = 4), "\n  \n")
+  # Text report -- original
+  if (is.na(x$shapiro_original$p.value)) {
+    cat("Original Data Shapiro-Wilk Test: skipped (",
+        x$shapiro_original$method, ")\n", sep = "")
+  } else {
+    cat("Original Data Shapiro-Wilk Test: ")
+    cat("   W =", round(x$shapiro_original$statistic, 4),
+        "  p-value =", format.pval(x$shapiro_original$p.value, digits = 4), "\n")
+  }
+  # Text report -- transformed
+  if (is.na(x$shapiro_transformed$p.value)) {
+    cat("Transformed Data Shapiro-Wilk Test: skipped (",
+        x$shapiro_transformed$method, ")\n  \n", sep = "")
+  } else {
+    cat("Transformed Data Shapiro-Wilk Test: ")
+    cat("W =", round(x$shapiro_transformed$statistic, 4),
+        "  p-value =", format.pval(x$shapiro_transformed$p.value, digits = 4), "\n  \n")
+  }
   cat("Below are all considered transformations: [Pearson P / df, lower => more normal]",
       paste0("  (n=", x$bestNormalize$chosen_transform$n, ")\n"))
   print(x$norm_stats, row.names = FALSE)
@@ -562,13 +611,11 @@ print.f_bestNormalize <- function(x, ...) {
 
 #' @export
 plot.f_bestNormalize <- function(x, which = 1:2, ask = FALSE,...) {
-  # Save and restore par options
-  old_par <- par(no.readonly = TRUE)
-  old_par$new <- NULL                 # Remove this parameter to prevent warning
-  on.exit({
-    par(old_par)
-    layout(1)  # Reset layout matrix
-  })
+
+  ########## Reset initial settings on exit #################################
+  .session_state <- save_session_state()  # Helper function: helper_session_state
+  on.exit(restore_session_state(.session_state), add = TRUE) # Helper function: helper_session_state
+
 
   par(ask = ask)
 
@@ -598,7 +645,7 @@ plot.f_bestNormalize <- function(x, which = 1:2, ask = FALSE,...) {
         oma = c(0, 0, 2, 0),
         mgp = c(1.7, .5, 0)  # Default is par(mgp = c(3, 1, 0))
     )
-    f_qqnorm(x$original_data, paste0(main = "Original data: ", x$data_name),
+    f_qqnorm(x$original_data, main = paste0("Original data: ", x$data_name),
              cex.main = 0.9, cex.lab = 0.8, cex.axis = 0.8)
     f_qqnorm(x$transformed_data,
              main = paste0("Transformed data \nwith `bestNormalize`: ", x$transformation_name),

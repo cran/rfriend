@@ -2,17 +2,29 @@
 % Please edit documentation in R/fboxplot.R
 \name{f_boxplot}
 \alias{f_boxplot}
+\alias{f_boxplot.formula}
+\alias{f_boxplot.data.frame}
+\alias{f_boxplot_worker}
 \title{Generate a Boxplot Report of a data.frame}
 \usage{
-f_boxplot(
-  data = NULL,
+f_boxplot(x, ...)
+
+\method{f_boxplot}{formula}(formula, data, ...)
+
+\method{f_boxplot}{data.frame}(x, ...)
+
+f_boxplot_worker(
   formula = NULL,
+  data,
   fancy_names = NULL,
   output_type = "pdf",
+  outliers = TRUE,
+  coef = 1.5,
+  limit_columns = 7,
   save_as = NULL,
   save_in_wdir = FALSE,
   close_generated_files = FALSE,
-  open_generated_files = TRUE,
+  open_generated_files = interactive(),
   boxplot_explanation = TRUE,
   detect_factors = TRUE,
   jitter = FALSE,
@@ -24,13 +36,24 @@ f_boxplot(
 )
 }
 \arguments{
-\item{data}{A \code{data.frame} containing the data to be used for creating boxplots.}
+\item{x}{A data.frame or formula (dispatches to the right method).}
+
+\item{...}{Further arguments forwarded to \code{f_boxplot_worker},
+such as \code{fancy_names}, \code{title}, \code{fill}, etc.}
 
 \item{formula}{A formula specifying the factor to be plotted. More response variables can be added using \code{-} or \code{+} (e.g., \code{response1 + response2 ~ predictor}) to generate multiple boxplots. If the formula is omitted and only \code{data} is provided all data will be used for creating boxplots.}
+
+\item{data}{A \code{data.frame} containing the data to be used for creating boxplots.}
 
 \item{fancy_names}{An optional named vector mapping column names in \code{data} to more readable names for display in plots (name map). Defaults to \code{NULL}.}
 
 \item{output_type}{Character string, specifying the output format: \code{"pdf"}, \code{"word"}, \code{"rmd"} or \code{"png"}. The option \code{"rmd"} saves rmd code in the output object not in a file. Default is \code{"pdf"}.}
+
+\item{outliers}{Logical. If \code{TRUE}, scans for outliers using Tukey's fences and if they exist, adds them to the report using \code{f_outliers}. Default \code{TRUE}.}
+
+\item{coef}{Numeric. The multiplier for the Interquartile Range (IQR) used for outlier detection. Default \code{1.5}.}
+
+\item{limit_columns}{Integer or \code{NULL}. Defines the number of columns shown in the outlier table. Default = \code{7}. \code{NULL} = all columns are shown.}
 
 \item{save_as}{Character string specifying the output file path (without extension).
 If a full path is provided, output is saved to that location.
@@ -41,9 +64,12 @@ Defaults to \code{file.path(tempdir(), "dataname_BoxPlot.pdf")}.}
 
 \item{save_in_wdir}{Logical. If \code{TRUE}, saves the file in the working directory. Default is \code{FALSE}, this avoid unintended changes to the global environment. If \code{save_as} location is specified \code{save_in_wdir} is overwritten by \code{save_as}.}
 
-\item{close_generated_files}{Logical. If \code{TRUE}, closes open 'Word' files depending on the output format. This to be able to save the newly generated files. 'Pdf' files should also be closed before using the function and cannot be automatically closed.}
+\item{close_generated_files}{Logical. Closes open Excel or Word (NOT pdf) files before writing, depending on the output format. Works on Windows (taskkill), macOS (pkill) and Linux (pkill/soffice). Default \code{FALSE}. \strong{WARNING:} Always save your work before using this option!!}
 
-\item{open_generated_files}{Logical. If \code{TRUE}, Opens the generated output files ('pdf', 'Word' or 'png') files depending on the output format. This to directly view the results after creation. Files are stored in tempdir(). Default is \code{TRUE}.}
+\item{open_generated_files}{Logical. Whether to open the generated output
+files after creation. Defaults to \code{TRUE} in an interactive R session
+and \code{FALSE} otherwise (e.g. in scripts or automated pipelines).
+Set to \code{TRUE} or \code{FALSE} to override this behaviour explicitly.}
 
 \item{boxplot_explanation}{A logical value indicating whether to include an explanation of how to interpret boxplots in the report. Defaults to \code{TRUE}.}
 
@@ -62,7 +88,12 @@ Defaults to \code{file.path(tempdir(), "dataname_BoxPlot.pdf")}.}
 \item{las}{An integer (\code{0} t/m \code{3}), \code{las = 0}: Axis labels are parallel to the axis. \code{las = 1}: Axis labels are always horizontal. \code{las = 2}: Axis labels are perpendicular to the axis. (default setting). \code{las = 3}: Axis labels are always vertical.}
 }
 \value{
-Generates a report file ('pdf' or 'Word') with boxplots and, optionally, opens it with the default program. Returns NULL (no R object) when generating 'pdf' or 'Word' files. Can also return R Markdown code or 'PNG' files depending on the output format.
+The return value depends on \code{output_type}:
+\itemize{
+  \item \code{"pdf"} and \code{"word"}: Writes a report file to \code{save_as} (or \code{tempdir()} by default) and returns \code{NULL} invisibly. The file can optionally be opened with \code{open_generated_files = TRUE}.
+  \item \code{"png"}: Writes one PNG file per response x factor combination into the directory given by \code{save_as} and returns \code{NULL} invisibly.
+  \item \code{"rmd"}: Returns the generated R Markdown content as a single character string (invisibly). No file is written and nothing is printed to the console. The caller can \code{cat()} the string, assign it to a variable, or embed it in a larger report (see Examples).
+}
 }
 \description{
 Generates boxplots for all numeric variables in a given dataset, grouped by factor variables. The function automatically detects numeric and factor variables. It allows two output formats ('pdf', 'Word') and includes an option to add a general explanation about interpreting boxplots.
@@ -87,9 +118,9 @@ This function requires [Pandoc](https://github.com/jgm/pandoc/releases/tag) (ver
 
 \bold{Windows:} Install Pandoc and ensure the installation folder \cr (e.g., "C:/Users/your_username/AppData/Local/Pandoc") is added to your system PATH.
 
-\bold{macOS:} If using Homebrew, Pandoc is typically installed in "/usr/local/bin". Alternatively, download the .pkg installer and verify that the binary’s location is in your PATH.
+\bold{macOS:} If using Homebrew, Pandoc is typically installed in "/usr/local/bin". Alternatively, download the .pkg installer and verify that the binary's location is in your PATH.
 
-\bold{Linux:} Install Pandoc through your distribution’s package manager (commonly installed in "/usr/bin" or "/usr/local/bin") or manually, and ensure the directory containing Pandoc is in your PATH.
+\bold{Linux:} Install Pandoc through your distribution's package manager (commonly installed in "/usr/bin" or "/usr/local/bin") or manually, and ensure the directory containing Pandoc is in your PATH.
 
 If Pandoc is not found, this function may not work as intended.
 }
@@ -109,8 +140,7 @@ new_names = c(
 # Use the whole data.frame to generate an MS Word report and don't open it.
 f_boxplot(iris,
            fancy_names = new_names,
-           output_type = "word",
-           open_generated_files = FALSE
+           output_type = "word"
            )
 
 # Use a formula to plot several response parameters (response 1 + response 2 etc)
@@ -119,8 +149,25 @@ data(mtcars)
 f_boxplot(hp + disp ~ gear*cyl,
            data=mtcars,
            boxplot_explanation = FALSE,
-           output_type = "word",
-           open_generated_files = FALSE) # Do not automatically open the 'Word' file.
+           output_type = "word"
+           )
+
+# Capture the R Markdown output as a string and render it inline.
+# Use output_type = "rmd" to get the markdown back as a character value
+# instead of writing a file. Useful for embedding in a larger knitr document.
+rmd <- f_boxplot(iris,
+                 output_type         = "rmd",
+                 boxplot_explanation = FALSE,
+                 outliers            = FALSE
+                 )
+
+# Display it in the console
+cat(rmd)
+
+# ...or splice it into a knitr child chunk with results = "asis":
+#   ```{r, echo=FALSE, results='asis'}
+#   cat(rmd)
+#   ```
 }
 
 }

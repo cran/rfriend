@@ -8,15 +8,15 @@ f_boxcox(
   data = data,
   digits = 3,
   range = c(-2, 2),
-  plots = FALSE,
+  plots = NULL,
   transform.data = TRUE,
   eps = 1/50,
   xlab = expression(lambda),
   ylab = "log-Likelihood",
   alpha = 0.05,
-  open_generated_files = TRUE,
+  open_generated_files = interactive(),
   close_generated_files = FALSE,
-  output_type = "off",
+  output_type = "default",
   save_as = NULL,
   save_in_wdir = FALSE,
   ...
@@ -41,11 +41,28 @@ f_boxcox(
 
 \item{alpha}{Numeric. Significance level for the Shapiro-Wilk test of normality. Default is \code{0.05}.}
 
-\item{open_generated_files}{Logical. If \code{TRUE}, opens the generated output files ('pdf', 'Word' or 'Excel') files depending on the output format. This to directly view the results after creation. Files are stored in tempdir(). Default is \code{TRUE}.}
+\item{open_generated_files}{Logical. Whether to open the generated output
+files after creation. Defaults to \code{TRUE} in an interactive R session
+and \code{FALSE} otherwise (e.g. in scripts or automated pipelines).
+Set to \code{TRUE} or \code{FALSE} to override this behaviour explicitly.}
 
-\item{close_generated_files}{Logical. If \code{TRUE}, closes open 'Word' files depending on the output format. This to be able to save the newly generated files. 'Pdf' files should also be closed before using the function and cannot be automatically closed.}
+\item{close_generated_files}{Logical. Closes open Excel or Word (NOT pdf) files before writing, depending on the output format. Works on Windows (taskkill), macOS (pkill) and Linux (pkill/soffice). Default \code{FALSE}. \strong{WARNING:} Always save your work before using this option!!}
 
-\item{output_type}{Character string specifying the output format: \code{"pdf"}, \code{"word"}, \code{"rmd"}, \code{"off"} (no file generated) or \code{"console"}. The option \code{"console"} forces output to be printed. Default is \code{"off"}.}
+\item{output_type}{Character string specifying the output format. Default is \code{"default"}.
+\itemize{
+  \item \code{"default"}: Returns the object and lets R decide whether
+    to print; auto-prints if unassigned, silent if assigned to a variable.
+    Use \code{print(result)} or \code{plot(result)} to display the
+    returned object.
+  \item \code{"console"}: Forces immediate printing to the console
+    regardless of object assignment.
+  \item \code{"pdf"}, \code{"word"}, \code{"excel"}: Saves results to a
+    file of the corresponding format. See \code{save_as},
+    \code{save_in_wdir}, and \code{open_generated_files} for file
+    path and opening behavior.
+  \item \code{"rmd"}: Stores the raw markdown string inside the returned
+    object for use in R Markdown documents.
+}}
 
 \item{save_as}{Character string specifying the output file path (without extension).
 If a full path is provided, output is saved to that location.
@@ -97,8 +114,8 @@ The function provides diagnostic plots: a plot of log-likelihood against \eqn{\l
 This function requires [Pandoc](https://github.com/jgm/pandoc/releases/tag) (version 1.12.3 or higher), a universal document converter.
 \itemize{
 \item \bold{Windows:} Install Pandoc and ensure the installation folder \cr (e.g., "C:/Users/your_username/AppData/Local/Pandoc") is added to your system PATH.
-\item \bold{macOS:} If using Homebrew, Pandoc is typically installed in "/usr/local/bin". Alternatively, download the .pkg installer and verify that the binary’s location is in your PATH.
-\item \bold{Linux:} Install Pandoc through your distribution’s package manager (commonly installed in "/usr/bin" or "/usr/local/bin") or manually, and ensure the directory containing Pandoc is in your PATH.
+\item \bold{macOS:} If using Homebrew, Pandoc is typically installed in "/usr/local/bin". Alternatively, download the .pkg installer and verify that the binary's location is in your PATH.
+\item \bold{Linux:} Install Pandoc through your distribution's package manager (commonly installed in "/usr/bin" or "/usr/local/bin") or manually, and ensure the directory containing Pandoc is in your PATH.
 
 \item If Pandoc is not found, this function may not work as intended.
 }
